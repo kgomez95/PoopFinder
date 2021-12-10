@@ -1,0 +1,55 @@
+.poop-finder {
+    text-align: justify;
+    text-justify: inter-word;
+    -webkit-hyphens: auto;
+    hyphens: auto;
+
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none; 
+
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+}
+
+.poop-finder > .main-menu {
+    text-align: center;
+}
+
+.poop-finder > .main-menu > h1 {
+    border-top: 1px solid #212F3C;
+    border-bottom: 1px solid #212F3C;
+    font-style: italic;
+    padding: 5px;
+    color: #212F3C;
+}
+
+.poop-finder > .main-menu > ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 auto;
+    width: 50%;
+}
+
+.poop-finder > .main-menu > ul > li {
+    border: 1px solid #212F3C;
+    border-radius: 5px;
+    margin-top: 10px;
+    padding: 5px;
+    cursor: pointer;
+}
+.poop-finder > .main-menu > ul > li:hover {
+    background-color: #212F3C;
+    color: white;
+}
+
+
+@media only screen and (max-width: 600px) {
+    .poop-finder > .main-menu > ul {
+        width: 100%;
+    }
+}
