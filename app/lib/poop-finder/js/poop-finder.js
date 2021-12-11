@@ -81,7 +81,10 @@ var PoopFinderGame = (function (w) {
          * @param {boolean} toggle - Indicador para mostrar u ocultar el menú principal.
          */
         Interface.prototype.toggleMainMenu = function (toggle) {
-            // TODO: Hacer que se muestre y que se oculte el menú principal.
+            if (toggle)
+                this.mainMenu.style.display = "block";
+            else
+                this.mainMenu.style.display = "none";
         };
 
         return Interface;
