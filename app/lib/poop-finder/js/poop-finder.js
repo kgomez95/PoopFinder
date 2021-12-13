@@ -10,8 +10,11 @@ var PoopFinderGame = (function (w) {
         },
         cells: {
             poop: -1,
-            flag: -2, // 🚩
-            questionMark: -3 // ❔
+            flag: -2,
+            questionMark: -3,
+            genetaId: function (x, y) {
+                return "x" + x + "y" + y;
+            }
         }
     };
 
@@ -29,7 +32,13 @@ var PoopFinderGame = (function (w) {
             that.container = undefined;
             /** @type {HTMLElement} */
             that.mainMenu = undefined;
+            /** @type {HTMLElement} */
+            that.gameMenu = undefined;
+            /** @type {HTMLElement} */
+            that.boardContainer = undefined;
+
             that.game = gameCtrl;
+            that.board = {};
 
             /**
              * @description Inicializa la clase Interface.
@@ -113,7 +122,61 @@ var PoopFinderGame = (function (w) {
          * @param {number} y - Cantidad de posiciones verticales que tendrá el tablero.
          */
         Interface.prototype.createBoard = function (x, y) {
-            // TODO: Crear la instancia DOM con todos sus eventos para el tablero de juego.
+            var that = this;
+
+            // Creamos el contenedor y la tabla.
+            var container = w.document.createElement("div"),
+                table = w.document.createElement("table");
+
+            // Asignamos las clases al contenedor y a la tabla.
+            container.className = "poop-table-container";
+            table.className = "poop-table";
+
+            // Vaciamos el tablero que se guarda en memoria.
+            that.board = {};
+
+            // Construimos la tabla.
+            for (var i = 0; i < x; i++) {
+                var tr = w.document.createElement("tr");
+
+                for (var j = 0; j < y; j++) {
+                    var td = w.document.createElement("td");
+
+                    td.setAttribute("value", "");
+                    td.setAttribute("selected", "0");
+
+                    td.onclick = (function (xPos, yPos) {
+                        return function () {
+                            that.game.board.checkOff(xPos, yPos);
+                        }
+                    })(i, j);
+
+                    // TODO: Crear los eventos clic.
+
+                    // Guardamos la referencia de la casilla en memoria.
+                    that.board[_constants.cells.genetaId(i, j)] = td;
+
+                    tr.appendChild(td);
+                }
+
+                table.appendChild(tr);
+            }
+
+            // Si ya existe un tablero actual entonces lo vaciamos.
+            if (that.boardContainer) that.boardContainer.innerHTML = "";
+
+            // Añadimos la tabla al contenedor, guardamos el contenedor y lo instanciamos.
+            container.appendChild(table);
+            that.boardContainer = container;
+            that.container.appendChild(that.boardContainer);
+        };
+
+        /**
+         * @name updateCountMines
+         * @description Actualiza la cantidad de minas que quedan por detectar.
+         */
+        Interface.prototype.updateCountMines = function () {
+            // TODO: Actualizar las minas en el menú de juego.
         };
 
         return Interface;
@@ -136,6 +199,7 @@ var PoopFinderGame = (function (w) {
             that.poops = poops;
             that.board = [];
             that.game = gameCtrl;
+            that.totalPoops = 0;
 
             // Calculamos el total de celdas que tenemos que seleccionar para ganar la partida.
             that.cellsToWin = (that.x * that.y) - that.poops;
@@ -231,10 +295,132 @@ var PoopFinderGame = (function (w) {
              * @description Invoca al InterfaceCtrl para instanciar el tablero de juego en pantalla.
              */
             function instantiateBoard() {
-                // TODO: Llamar al InterfaceCtrl desde "that.game" para crear la instancia del tablero en pantalla.
+                that.game.interface.createBoard(that.x, that.y);
+                that.game.interface.toggleMainMenu(false);
             };
 
             init();
+        };
+
+        /**
+         * @name checkOff
+         * @description Evento clic izquierdo para marcar una casilla.
+         * @param {number} x - Posición horizontal de la casilla.
+         * @param {number} y - Posición vertical de la casilla.
+         */
+        Board.prototype.checkOff = function (x, y) {
+            var that = this;
+
+            if (!that.game.isGameOver) {
+                // TODO: Inicializar el temporizador.
+
+                that.markCell(x, y, false);
+
+                // Comprobamos si el usuario ha finalizado o no la partida.
+                if (that.cellsToWin <= 0) {
+                    that.game.gameOver(true);
+                }
+            }
+        };
+
+        /**
+         * @name markCell
+         * @description Marca la casilla proporcionada por parámetros.
+         * @param {number} xPos - Número de fila a comprobar.
+         * @param {number} yPos - Número de columna a comprobar.
+         * @param {boolean} ignoreFlag - Si este valor es "false" y se marca una casilla con una bandera
+         *                               o interrogación no pasará nada. Si este valor está a "true" y se
+         *                               marca una casilla con una bandera o interrogación entonces las
+         *                               quitará para marcar la casilla.
+         */
+        Board.prototype.markCell = function (xPos, yPos, ignoreFlag) {
+            var that = this;
+
+            // En caso de que la celda no sea válida salimos de la función.
+            if (that.board[xPos] === undefined) return;
+            if (that.board[xPos][yPos] === undefined) return;
+
+            // Cogemos la celda.
+            var cell = that.game.interface.board[_constants.cells.genetaId(xPos, yPos)];
+            if (!cell) throw new Error("PoopFinder: No se ha encontrado el elemento x = '" + xPos + "' e y = '" + yPos + "'.");
+
+            // Cogemos el valor que tiene la celda.
+            var value = parseInt(cell.getAttribute("value")),
+                selected = parseInt(cell.getAttribute("selected"));
+
+            // Solo marcamos la celda si ésta no está seleccionada y si no tiene valor o si el flag "ignoreFlag" está activo.
+            if (selected === 0 && (isNaN(value) || ignoreFlag)) {
+                if (that.board[xPos][yPos] === _constants.cells.poop) {
+                    // Esta casilla tiene una mina, por tanto, fin del juego.
+                    that.game.gameOver(false);
+                }
+                else {
+                    // NOTE: En caso de que la celda tenga un valor numérico tenemos que quitar la bandera o la interrogación, ya que si el código ha llegado
+                    //       hasta aquí significa que el flag "ignoreFlag" está a "true", por tanto esta casilla se ha tenido que marcar de forma automática.
+                    if (!isNaN(value)) {
+                        if (value === _constants.cells.flag) {
+                            // Como esta casilla no tiene una mina le quitamos la bandera y le sumamos uno al contador.
+                            cell.className = "";
+                            that.totalPoops++;
+                            that.game.interface.updateCountMines();
+                        }
+                        else if (value === _constants.cells.questionMark) {
+                            // Como esta casilla no tiene una mina le quitamos la interrogación.
+                            cell.className = "";
+                        }
+                    }
+
+                    // Marcamos la casilla.
+                    cell.setAttribute("value", that.board[xPos][yPos]);
+                    cell.className = "selected cell-" + that.board[xPos][yPos];
+                    cell.setAttribute("selected", "1");
+
+                    // Restamos la celda seleccionada.
+                    that.cellsToWin--;
+
+                    if (that.board[xPos][yPos] === 0) {
+                        // En caso de que no haya ninguna mina alrededor de esta casilla marcaremos todas las casillas de alrededor.
+                        for (var x = xPos - 1; x <= xPos + 1; x++) {
+                            for (var y = yPos - 1; y <= yPos + 1; y++) {
+                                if (that.board[x] !== undefined) {
+                                    if (that.board[x][y] !== undefined) {
+                                        that.markCell(x, y, true);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        // Comprobamos si alrededor hay alguna casilla la cual no tenga minas alrededor para poder marcarla automáticamente.
+                        for (var x = xPos - 1; x <= xPos + 1; x++) {
+                            for (var y = yPos - 1; y <= yPos + 1; y++) {
+                                if (that.board[x] !== undefined) {
+                                    if (that.board[x][y] === 0) {
+                                        that.markCell(x, y, true);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        /**
+         * @name showPoops
+         * @description Muestra todas las "minas" del tablero de juego.
+         */
+        Board.prototype.showPoops = function () {
+            var that = this;
+
+            for (var x = 0; x < that.x; x++) {
+                for (var y = 0; y < that.y; y++) {
+                    if (that.board[x][y] === _constants.cells.poop) {
+                        var cell = that.game.interface.board[_constants.cells.genetaId(x, y)];
+                        cell.className = "explosion mine";
+                    }
+                }
+            }
         };
 
         return Board;
@@ -249,6 +435,7 @@ var PoopFinderGame = (function (w) {
         function PoopFinder(containerId) {
             this.interface = new InterfaceCtrl(containerId, this);
             this.board = undefined;
+            this.isGameOver = false;
         };
 
         /**
@@ -272,6 +459,26 @@ var PoopFinderGame = (function (w) {
             }
 
             // TODO: Después de crear el tablero hay que ocultar el menú principal, mostrar el tablero y mostrar el menú de juego.
+        };
+
+        /**
+         * @name gameOver
+         * @description Indica el fin de la partida.
+         * @param {boolean} hasWon - Indica si el usuario ha ganado o no.
+         */
+        PoopFinder.prototype.gameOver = function (hasWon) {
+            var that = this;
+            that.isGameOver = true;
+            console.log("PoopFinder: Fin de la partida. ", hasWon);
+
+            // TODO: Parar el temporizador.
+
+            if (!hasWon) {
+                that.board.showPoops();
+            }
+            else {
+                // TODO: Mostrar todas las banderas.
+            }
         };
 
         return PoopFinder;

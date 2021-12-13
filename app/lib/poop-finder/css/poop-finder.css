@@ -47,6 +47,92 @@
     color: white;
 }
 
+.poop-finder > .poop-table-container {
+    overflow-x: auto;
+    height: 100%;
+    width: min-content;
+    width: -moz-min-content;
+    width: -webkit-min-content;
+    margin: 85px auto auto auto;
+
+    display: -ms-grid;
+    -ms-grid-columns: min-content;
+}
+
+.poop-finder > .poop-table-container > .poop-table {
+    border: 1px solid black;
+    table-layout: fixed;
+    width: 100%;
+    margin: 0 auto;
+    background-color: darkgrey;
+}
+
+.poop-finder > .poop-table-container > .poop-table > tr {
+    width: 100%;
+}
+
+.poop-finder > .poop-table-container > .poop-table > tr > td {
+    border: 1px solid black;
+    text-align: center;
+    background-color: silver;
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+    font-size: 35px;
+}
+
+.poop-finder > .poop-table-container > .poop-table > tr > td.selected {
+    background-color: white;
+}
+.poop-finder > .poop-table-container > .poop-table > tr > td.explosion {
+    background-color: crimson;
+}
+
+.poop-finder .mine::after {
+    content: "💩";
+}
+.poop-finder .flag::after {
+    content: "🚩";
+}
+.poop-finder .question-flag::after {
+    content: "❔";
+}
+.poop-finder .cell-0::after {
+    content: "";
+}
+.poop-finder .cell-1::after {
+    content: "1";
+    color: blue;
+}
+.poop-finder .cell-2::after {
+    content: "2";
+    color: green;
+}
+.poop-finder .cell-3::after {
+    content: "3";
+    color: red;
+}
+.poop-finder .cell-4::after {
+    content: "4";
+    color: darkblue;
+}
+.poop-finder .cell-5::after {
+    content: "5";
+    color: brown;
+}
+.poop-finder .cell-6::after {
+    content: "6";
+    color: hotpink;
+}
+.poop-finder .cell-7::after {
+    content: "7";
+    color: coral;
+}
+.poop-finder .cell-8::after {
+    content: "8";
+    color: turquoise;
+}
+
 
 @media only screen and (max-width: 600px) {
     .poop-finder > .main-menu > ul {
