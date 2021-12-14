@@ -15,6 +15,9 @@ var PoopFinderGame = (function (w) {
             genetaId: function (x, y) {
                 return "x" + x + "y" + y;
             }
+        },
+        touch: {
+            timeout: 500
         }
     };
 
@@ -142,25 +145,62 @@ var PoopFinderGame = (function (w) {
                 for (var j = 0; j < y; j++) {
                     var td = w.document.createElement("td");
 
+                    // Añadimos los atributos necesarios a la columna.
                     td.setAttribute("value", "");
                     td.setAttribute("selected", "0");
 
-                    td.onclick = (function (xPos, yPos) {
-                        return function () {
-                            that.game.board.checkOff(xPos, yPos);
-                        }
-                    })(i, j);
+                    // NOTE: Si el evento "ontouchstart" es "undefined" significa que no soporta el touch, pero si es "null"
+                    //       significa que sí lo soporta.
+                    if (td.ontouchstart !== undefined) {
+                        // Evento al iniciar el touch.
+                        td.ontouchstart = (function (xPos, yPos) {
+                            return function () {
+                                that.game.board.startTouch(xPos, yPos);
+                            };
+                        })(i, j);
 
-                    // TODO: Crear los eventos clic.
+                        // Evento al finalizar el touch.
+                        td.ontouchend = (function (xPos, yPos) {
+                            return function () {
+                                that.game.board.endTouch(xPos, yPos);
+                            };
+                        })(i, j);
+
+                        // Evento al mover el touch.
+                        td.ontouchmove = function () {
+                            that.game.board.cancelTouch();
+                        };
+                    }
+                    else {
+                        // Evento para marcar una casilla.
+                        td.onclick = (function (xPos, yPos) {
+                            return function () {
+                                that.game.board.checkOff(xPos, yPos);
+                            };
+                        })(i, j);
+
+                        // Evento para marcar una bandera o una interrogación.
+                        td.oncontextmenu = (function (xPos, yPos) {
+                            return function () {
+                                that.game.board.setFlag(xPos, yPos);
+                            };
+                        })(i, j);
+                    }
 
                     // Guardamos la referencia de la casilla en memoria.
                     that.board[_constants.cells.genetaId(i, j)] = td;
 
+                    // Añadimos la columna a la fila.
                     tr.appendChild(td);
                 }
 
                 table.appendChild(tr);
             }
+
+            // Desactivamos el menú del clic derecho para el tablero de juego.
+            table.oncontextmenu = function (event) {
+                event.preventDefault();
+            };
 
             // Si ya existe un tablero actual entonces lo vaciamos.
             if (that.boardContainer) that.boardContainer.innerHTML = "";
@@ -200,6 +240,11 @@ var PoopFinderGame = (function (w) {
             that.board = [];
             that.game = gameCtrl;
             that.totalPoops = 0;
+            that.touch = {
+                type: -1,
+                element: undefined,
+                timeout: 0
+            };
 
             // Calculamos el total de celdas que tenemos que seleccionar para ganar la partida.
             that.cellsToWin = (that.x * that.y) - that.poops;
@@ -345,8 +390,8 @@ var PoopFinderGame = (function (w) {
             if (!cell) throw new Error("PoopFinder: No se ha encontrado el elemento x = '" + xPos + "' e y = '" + yPos + "'.");
 
             // Cogemos el valor que tiene la celda.
-            var value = parseInt(cell.getAttribute("value")),
-                selected = parseInt(cell.getAttribute("selected"));
+            var value = w.parseInt(cell.getAttribute("value")),
+                selected = w.parseInt(cell.getAttribute("selected"));
 
             // Solo marcamos la celda si ésta no está seleccionada y si no tiene valor o si el flag "ignoreFlag" está activo.
             if (selected === 0 && (isNaN(value) || ignoreFlag)) {
@@ -423,6 +468,93 @@ var PoopFinderGame = (function (w) {
             }
         };
 
+        /**
+         * @name setFlag
+         * @description Evento clic derecho para marcar una casilla con una bandera, con una posible bandera o le quita las banderas.
+         * @param {number} x - Posición horizontal de la casilla.
+         * @param {number} y - Posición vertical de la casilla.
+         */
+        Board.prototype.setFlag = function (x, y) {
+            var that = this;
+
+            if (!that.game.isGameOver) {
+                // TODO: Inicializar temporizador.
+
+                var cell = that.game.interface.board[_constants.cells.genetaId(x, y)];
+                var value = w.parseInt(cell.getAttribute("value"));
+
+                if (isNaN(value)) {
+                    cell.setAttribute("value", _constants.cells.poop);
+                    cell.className = "flag";
+                    that.totalPoops--;
+                    that.game.interface.updateCountMines();
+                }
+                else if (value === _constants.cells.poop) {
+                    cell.setAttribute("value", _constants.cells.questionMark);
+                    cell.className = "question-flag";
+                    that.totalPoops++;
+                    that.game.interface.updateCountMines();
+                }
+                else if (value === _constants.cells.questionMark) {
+                    cell.setAttribute("value", "");
+                    cell.className = "";
+                }
+            }
+        };
+
+        /**
+         * @name startTouch
+         * @description Inicio del evento touch. Si el usuario mantiene medio segundo el botón presionado el tipo de touch cambia.
+         * @param {number} x - Posición horizontal de la casilla.
+         * @param {number} y - Posición vertical de la casilla.
+         */
+        Board.prototype.startTouch = function (x, y) {
+            var that = this;
+
+            that.touch.type = 0;
+            that.touch.element = that.game.interface.board[_constants.cells.genetaId(x, y)];
+
+            that.touch.timeout = w.setTimeout(function () {
+                that.touch.type = 1;
+            }, _constants.touch.timeout);
+        };
+
+        /**
+         * @name endTouch
+         * @description Fin del evento touch. Dependiendo del tipo de touch pone una bandera o marca la casilla seleccionada.
+         * @param {number} x - Posición horizontal de la casilla.
+         * @param {number} y - Posición vertical de la casilla.
+         */
+        Board.prototype.endTouch = function (x, y) {
+            var that = this;
+
+            // Cancelamos el timeout del evento touch.
+            w.clearTimeout(that.touch.timeout);
+            that.touch.timeout = 0;
+
+            if (that.touch.type === 0) {
+                that.checkOff(x, y);
+            }
+            else if (that.touch.type === 1) {
+                that.setFlag(x, y);
+            }
+        };
+
+        /**
+         * @name cancelTouch
+         * @description Esta función se ejecuta cuando se ha iniciado el evento touch sobre una celda y el usuario mueve el dedo. Si mueve el dedo
+         *              significa que lo que quiere es hacer scroll en la tabla, por tanto, cancelamos el evento touch.
+         */
+        Board.prototype.cancelTouch = function () {
+            var that = this;
+
+            // Cancelamos el timeout del evento touch.
+            clearTimeout(that.touch.timeout);
+            that.touch.timeout = 0;
+
+            that.touch.type = -1;
+        };
+
         return Board;
     })();
 
@@ -452,7 +584,7 @@ var PoopFinderGame = (function (w) {
                     this.board = new BoardCtrl(16, 16, 40, this);
                     break;
                 case _constants.difficulty.hard:
-                    this.board = new BoardCtrl(30, 16, 99, this);
+                    this.board = new BoardCtrl(16, 30, 99, this);
                     break;
                 default:
                     throw new Error("PoopFinder: La dificultad '" + difficulty + "' no es válida.");
