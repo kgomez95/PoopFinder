@@ -88,6 +88,90 @@
     background-color: crimson;
 }
 
+.poop-finder > .game-menu {
+    background-color: #212F3C;
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    height: 40px;
+    color: white;
+    font-size: 20px;
+}
+
+.poop-finder > .game-menu .menu {
+    border: 1px solid white;
+    border-radius: 10px;
+    padding: 7px;
+    font-size: 25px;
+    cursor: pointer;
+    background-color: rgba(255, 255, 255, 0.212);
+}
+
+.poop-finder > .pause-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.315);
+}
+
+.poop-finder > .pause-menu > div {
+    position: absolute;
+    background-color: #606f7c;
+    color: whitesmoke;
+    left: 25%;
+    right: 25%;
+    top: 10%;
+    padding-bottom: 50px;
+    z-index: 1000;
+
+    border: 5px solid #212F3C;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.poop-finder > .pause-menu > div > h2 {
+    border-top: 2px solid whitesmoke;
+    border-bottom: 2px solid whitesmoke;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.poop-finder > .pause-menu > div > ul {
+    list-style: none;
+    padding: 0;
+    margin: 30px auto auto auto;
+}
+
+.poop-finder > .pause-menu > div > ul > li {
+    border: 1px solid whitesmoke;
+    border-radius: 5px;
+    margin-top: 10px;
+    padding: 5px;
+    cursor: pointer;
+}
+
+.poop-finder > .pause-menu > div > ul > li:hover {
+    background-color: #212F3C;
+}
+
+
+.poop-finder .face::after {
+    content: "😀";
+}
+.poop-finder .kiss::after {
+    content: "😘";
+}
+.poop-finder .confounded::after {
+    content: "😖";
+}
 .poop-finder .mine::after {
     content: "💩";
 }
@@ -137,5 +221,16 @@
 @media only screen and (max-width: 600px) {
     .poop-finder > .main-menu > ul {
         width: 100%;
+    }
+
+    .poop-finder > .poop-table-container {
+        width: 100vw;
+    }
+
+    .poop-finder > .pause-menu > div {
+        left: 10px;
+        right: 10px;
+        top: 10px;
+        bottom: 10px;
     }
 }

@@ -38,7 +38,13 @@ var PoopFinderGame = (function (w) {
             /** @type {HTMLElement} */
             that.gameMenu = undefined;
             /** @type {HTMLElement} */
+            that.pauseMenu = undefined;
+            /** @type {HTMLElement} */
             that.boardContainer = undefined;
+            /** @type {HTMLElement} */
+            that.poopCounter = undefined;
+            /** @type {HTMLElement} */
+            that.timer = undefined;
 
             that.game = gameCtrl;
             that.board = {};
@@ -49,6 +55,8 @@ var PoopFinderGame = (function (w) {
             function init() {
                 initContainer();
                 createMainMenu();
+                createGameMenu();
+                createPauseMenu();
             };
 
             /**
@@ -101,7 +109,97 @@ var PoopFinderGame = (function (w) {
                 that.container.appendChild(that.mainMenu);
             };
 
-            // TODO: Crear el menú de juego (tiene que contener la cantidad de minas restantes, un temporizador y un botón para abrir el menú de pausa).
+            /**
+             * @description Crea el elemento DOM del menú del juego.
+             */
+            function createGameMenu() {
+                var topContainer = w.document.createElement("div"),
+                    leftContainer = w.document.createElement("div"),
+                    centerContainer = w.document.createElement("div"),
+                    rightContainer = w.document.createElement("div"),
+                    spanFlag = w.document.createElement("span"),
+                    spanPoopCounter = w.document.createElement("span"),
+                    spanMenu = w.document.createElement("span"),
+                    spanTimer = w.document.createElement("span");
+
+                // Asignamos las clases a los elementos.
+                topContainer.className = "game-menu";
+                spanFlag.className = "flag";
+                spanMenu.className = "menu face";
+
+                // Creamos el evento clic para abrir el menú de pausa.
+                spanMenu.onclick = function () {
+                    that.togglePauseMenu(true);
+                };
+
+                // Incluimos los "span" a sus respectivos contenedores.
+                leftContainer.appendChild(spanFlag);
+                leftContainer.appendChild(spanPoopCounter);
+                centerContainer.appendChild(spanMenu);
+                rightContainer.appendChild(spanTimer);
+
+                // Incluimos todos los contenedores en el contenedor principal del menú de juego.
+                topContainer.appendChild(leftContainer);
+                topContainer.appendChild(centerContainer);
+                topContainer.appendChild(rightContainer);
+
+                // Guardamos las referencias del contador de "minas" y del temporizador y los inicializamos.
+                that.poopCounter = spanPoopCounter;
+                that.timer = spanTimer;
+                spanPoopCounter.innerHTML = "0";
+                spanTimer.innerHTML = "0";
+
+                // Guardamos la referencia del contenedor del menú de juego y lo instanciamos en el contenedor del juego.
+                that.gameMenu = topContainer;
+                that.container.appendChild(that.gameMenu);
+
+                // Ocultamos este menú por defecto.
+                that.toggleGameMenu(false);
+            };
+
+            /**
+             * @description Crea el elemento DOM del menú de pausa.
+             */
+            function createPauseMenu() {
+                var container = w.document.createElement("div"),
+                    pauseContainer = w.document.createElement("div"),
+                    title = w.document.createElement("h2"),
+                    ul = w.document.createElement("ul"),
+                    liContinue = w.document.createElement("li"),
+                    liReset = w.document.createElement("li"),
+                    liChangeDifficulty = w.document.createElement("li");
+
+                // Asignamos los textos en los menús.
+                title.innerHTML = "JUEGO PAUSADO";
+                liContinue.innerHTML = "Continuar";
+                liReset.innerHTML = "Reiniciar";
+                liChangeDifficulty.innerHTML = "Elegir dificultad";
+
+                // Asignamos la clase al contenedor del menú de pausa.
+                container.className = "pause-menu";
+
+                // Evento clic para cerrar el menú de pausa.
+                liContinue.onclick = function () {
+                    that.togglePauseMenu(false);
+                };
+
+                // TODO: Crear los eventos clic para reiniciar la partida actual y para ir al menú principal.
+
+                // Incluimos los elementos en sus respectivos contenedores.
+                ul.appendChild(liContinue);
+                ul.appendChild(liReset);
+                ul.appendChild(liChangeDifficulty);
+                pauseContainer.appendChild(title);
+                pauseContainer.appendChild(ul);
+                container.appendChild(pauseContainer);
+
+                // Guardamos la referencia del contenedor del menú de pausa y lo instanciamos en el contenedor del juego.
+                that.pauseMenu = container;
+                that.container.appendChild(that.pauseMenu);
+
+                // Ocultamos este menú por defecto.
+                that.togglePauseMenu(false);
+            };
 
             init();
         };
@@ -116,6 +214,32 @@ var PoopFinderGame = (function (w) {
                 this.mainMenu.style.display = "block";
             else
                 this.mainMenu.style.display = "none";
+        };
+
+        /**
+         * @name toggleGameMenu
+         * @description Muestra u oculta el menú de juego.
+         * @param {boolean} toggle - Indicador para mostrar u ocultar el menú de juego.
+         */
+        Interface.prototype.toggleGameMenu = function (toggle) {
+            if (toggle)
+                this.gameMenu.style.display = "flex";
+            else
+                this.gameMenu.style.display = "none";
+        };
+
+        /**
+         * @name togglePauseMenu
+         * @description Muestra u oculta el menú de pausa.
+         * @param {boolean} toggle - Indicador para mostrar u ocultar el menú de pausa.
+         */
+        Interface.prototype.togglePauseMenu = function (toggle) {
+            if (toggle)
+                this.pauseMenu.style.display = "block";
+            else
+                this.pauseMenu.style.display = "none";
+
+            // TODO: Pausar o poner en marcha el temporizador.
         };
 
         /**
@@ -342,6 +466,7 @@ var PoopFinderGame = (function (w) {
             function instantiateBoard() {
                 that.game.interface.createBoard(that.x, that.y);
                 that.game.interface.toggleMainMenu(false);
+                that.game.interface.toggleGameMenu(true);
             };
 
             init();
