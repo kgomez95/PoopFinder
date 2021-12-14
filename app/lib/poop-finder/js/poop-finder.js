@@ -183,7 +183,26 @@ var PoopFinderGame = (function (w) {
                     that.togglePauseMenu(false);
                 };
 
-                // TODO: Crear los eventos clic para reiniciar la partida actual y para ir al menú principal.
+                // Evento clic para reiniciar la partida actual.
+                liReset.onclick = function () {
+                    // TODO: Desactivar temporizador.
+
+                    that.game.newGame(that.game.difficulty);
+                    that.togglePauseMenu(false);
+                };
+
+                // Evento clic para ir al menú principal.
+                liChangeDifficulty.onclick = function () {
+                    // Ocultamos toda la escena actual.
+                    that.toggleGameMenu(false);
+                    that.togglePauseMenu(false);
+                    that.toggleBoard(false);
+
+                    // TODO: Desactivar temporizador.
+
+                    // Mostramos el menú principal.
+                    that.toggleMainMenu(true);
+                };
 
                 // Incluimos los elementos en sus respectivos contenedores.
                 ul.appendChild(liContinue);
@@ -239,7 +258,19 @@ var PoopFinderGame = (function (w) {
             else
                 this.pauseMenu.style.display = "none";
 
-            // TODO: Pausar o poner en marcha el temporizador.
+            // TODO: Pausar o poner en marcha el temporizador (si existe).
+        };
+
+        /**
+         * @name toggleBoard
+         * @description Muestra u oculta el tablero de juego.
+         * @param {boolean} toggle - Indicador para mostrar u ocultar el tablero de juego.
+         */
+        Interface.prototype.toggleBoard = function (toggle) {
+            if (toggle)
+                this.boardContainer.style.display = "block";
+            else
+                this.boardContainer.style.display = "none";
         };
 
         /**
@@ -327,7 +358,7 @@ var PoopFinderGame = (function (w) {
             };
 
             // Si ya existe un tablero actual entonces lo vaciamos.
-            if (that.boardContainer) that.boardContainer.innerHTML = "";
+            if (that.boardContainer) that.container.removeChild(that.boardContainer);
 
             // Añadimos la tabla al contenedor, guardamos el contenedor y lo instanciamos.
             container.appendChild(table);
@@ -693,6 +724,7 @@ var PoopFinderGame = (function (w) {
             this.interface = new InterfaceCtrl(containerId, this);
             this.board = undefined;
             this.isGameOver = false;
+            this.difficulty = "";
         };
 
         /**
@@ -701,6 +733,9 @@ var PoopFinderGame = (function (w) {
          * @param {string} difficulty - Dificultad de la nueva partida.
          */
         PoopFinder.prototype.newGame = function (difficulty) {
+            this.difficulty = difficulty;
+            this.isGameOver = false;
+
             switch (difficulty) {
                 case _constants.difficulty.easy:
                     this.board = new BoardCtrl(9, 9, 10, this);
@@ -712,6 +747,7 @@ var PoopFinderGame = (function (w) {
                     this.board = new BoardCtrl(16, 30, 99, this);
                     break;
                 default:
+                    this.difficulty = "";
                     throw new Error("PoopFinder: La dificultad '" + difficulty + "' no es válida.");
             }
 
