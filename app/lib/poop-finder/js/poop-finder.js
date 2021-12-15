@@ -18,6 +18,10 @@ var PoopFinderGame = (function (w) {
         },
         touch: {
             timeout: 500
+        },
+        timer: {
+            interval: 100,
+            increase: 0.1
         }
     };
 
@@ -45,6 +49,8 @@ var PoopFinderGame = (function (w) {
             that.poopCounter = undefined;
             /** @type {HTMLElement} */
             that.timer = undefined;
+            /** @type {HTMLElement} */
+            that.pauseButton = undefined;
 
             that.game = gameCtrl;
             that.board = {};
@@ -143,9 +149,12 @@ var PoopFinderGame = (function (w) {
                 topContainer.appendChild(centerContainer);
                 topContainer.appendChild(rightContainer);
 
-                // Guardamos las referencias del contador de "minas" y del temporizador y los inicializamos.
+                // Guardamos las referencias del contador de "minas", del temporizador y del botón pausa.
                 that.poopCounter = spanPoopCounter;
                 that.timer = spanTimer;
+                that.pauseButton = spanMenu;
+
+                // Inicializamos el contador de "minas" y el temporizador
                 spanPoopCounter.innerHTML = "0";
                 spanTimer.innerHTML = "0";
 
@@ -185,8 +194,7 @@ var PoopFinderGame = (function (w) {
 
                 // Evento clic para reiniciar la partida actual.
                 liReset.onclick = function () {
-                    // TODO: Desactivar temporizador.
-
+                    that.game.stopTimer();
                     that.game.newGame(that.game.difficulty);
                     that.togglePauseMenu(false);
                 };
@@ -198,7 +206,8 @@ var PoopFinderGame = (function (w) {
                     that.togglePauseMenu(false);
                     that.toggleBoard(false);
 
-                    // TODO: Desactivar temporizador.
+                    // Paramos el temporizador.
+                    that.game.stopTimer();
 
                     // Mostramos el menú principal.
                     that.toggleMainMenu(true);
@@ -253,12 +262,14 @@ var PoopFinderGame = (function (w) {
          * @param {boolean} toggle - Indicador para mostrar u ocultar el menú de pausa.
          */
         Interface.prototype.togglePauseMenu = function (toggle) {
-            if (toggle)
+            if (toggle) {
                 this.pauseMenu.style.display = "block";
-            else
+                this.game.isGamePaused = true;
+            }
+            else {
                 this.pauseMenu.style.display = "none";
-
-            // TODO: Pausar o poner en marcha el temporizador (si existe).
+                this.game.isGamePaused = false;
+            }
         };
 
         /**
@@ -367,11 +378,45 @@ var PoopFinderGame = (function (w) {
         };
 
         /**
-         * @name updateCountMines
-         * @description Actualiza la cantidad de minas que quedan por detectar.
+         * @name updateCountPoops
+         * @description Actualiza la cantidad de "minas" que quedan por detectar.
+         * @param {number} totalPoops - Cantidad total de minas que queda por detectar.
          */
-        Interface.prototype.updateCountMines = function () {
-            // TODO: Actualizar las minas en el menú de juego.
+        Interface.prototype.updateCountPoops = function (totalPoops) {
+            this.poopCounter.innerHTML = (typeof (totalPoops) === "number") ? totalPoops.toString() : "";
+        };
+
+        /**
+         * @name updateTimer
+         * @description Muestra el valor del temporizador en el menú de juego.
+         * @param {number} time - Valor del temporizador a mostrar por pantalla.
+         */
+        Interface.prototype.updateTimer = function (time) {
+            this.timer.innerHTML = (typeof (time) === "number") ? time.toString() : "";
+        };
+
+        /**
+         * @name setDefaultFace
+         * @description Muestra la cara por defecto en el menú de juego.
+         */
+        Interface.prototype.setDefaultFace = function () {
+            this.pauseButton.className = "menu face";
+        };
+
+        /**
+         * @name setVictoryFace
+         * @description Muestra la cara de victoria en el menú de juego.
+         */
+        Interface.prototype.setVictoryFace = function () {
+            this.pauseButton.className = "menu kiss";
+        };
+
+        /**
+         * @name setDefeatFace
+         * @description Muestra la cara de derrota en el menú de juego.
+         */
+        Interface.prototype.setDefeatFace = function () {
+            this.pauseButton.className = "menu confounded";
         };
 
         return Interface;
@@ -394,7 +439,7 @@ var PoopFinderGame = (function (w) {
             that.poops = poops;
             that.board = [];
             that.game = gameCtrl;
-            that.totalPoops = 0;
+            that.totalPoops = poops;
             that.touch = {
                 type: -1,
                 element: undefined,
@@ -411,6 +456,10 @@ var PoopFinderGame = (function (w) {
                 validateAttributes();
                 initBoard();
                 instantiateBoard();
+
+                // Mostramos las minas totales en el menú de juego y ponemos la cara por defecto en el menú de juego.
+                that.game.interface.updateCountPoops(that.totalPoops);
+                that.game.interface.setDefaultFace();
             };
 
             /**
@@ -510,16 +559,16 @@ var PoopFinderGame = (function (w) {
          * @param {number} y - Posición vertical de la casilla.
          */
         Board.prototype.checkOff = function (x, y) {
-            var that = this;
+            if (!this.game.isGameOver) {
+                // Inicializamos el temporizador.
+                this.game.startTimer();
 
-            if (!that.game.isGameOver) {
-                // TODO: Inicializar el temporizador.
-
-                that.markCell(x, y, false);
+                // Marcamos la casilla seleccionada.
+                this.markCell(x, y, false);
 
                 // Comprobamos si el usuario ha finalizado o no la partida.
-                if (that.cellsToWin <= 0) {
-                    that.game.gameOver(true);
+                if (this.cellsToWin <= 0) {
+                    this.game.gameOver(true);
                 }
             }
         };
@@ -535,14 +584,12 @@ var PoopFinderGame = (function (w) {
          *                               quitará para marcar la casilla.
          */
         Board.prototype.markCell = function (xPos, yPos, ignoreFlag) {
-            var that = this;
-
             // En caso de que la celda no sea válida salimos de la función.
-            if (that.board[xPos] === undefined) return;
-            if (that.board[xPos][yPos] === undefined) return;
+            if (this.board[xPos] === undefined) return;
+            if (this.board[xPos][yPos] === undefined) return;
 
             // Cogemos la celda.
-            var cell = that.game.interface.board[_constants.cells.genetaId(xPos, yPos)];
+            var cell = this.game.interface.board[_constants.cells.genetaId(xPos, yPos)];
             if (!cell) throw new Error("PoopFinder: No se ha encontrado el elemento x = '" + xPos + "' e y = '" + yPos + "'.");
 
             // Cogemos el valor que tiene la celda.
@@ -550,20 +597,20 @@ var PoopFinderGame = (function (w) {
                 selected = w.parseInt(cell.getAttribute("selected"));
 
             // Solo marcamos la celda si ésta no está seleccionada y si no tiene valor o si el flag "ignoreFlag" está activo.
-            if (selected === 0 && (isNaN(value) || ignoreFlag)) {
-                if (that.board[xPos][yPos] === _constants.cells.poop) {
+            if (selected === 0 && (w.isNaN(value) || ignoreFlag)) {
+                if (this.board[xPos][yPos] === _constants.cells.poop) {
                     // Esta casilla tiene una mina, por tanto, fin del juego.
-                    that.game.gameOver(false);
+                    this.game.gameOver(false);
                 }
                 else {
                     // NOTE: En caso de que la celda tenga un valor numérico tenemos que quitar la bandera o la interrogación, ya que si el código ha llegado
                     //       hasta aquí significa que el flag "ignoreFlag" está a "true", por tanto esta casilla se ha tenido que marcar de forma automática.
-                    if (!isNaN(value)) {
+                    if (!w.isNaN(value)) {
                         if (value === _constants.cells.flag) {
                             // Como esta casilla no tiene una mina le quitamos la bandera y le sumamos uno al contador.
                             cell.className = "";
-                            that.totalPoops++;
-                            that.game.interface.updateCountMines();
+                            this.totalPoops++;
+                            this.game.interface.updateCountPoops(this.totalPoops);
                         }
                         else if (value === _constants.cells.questionMark) {
                             // Como esta casilla no tiene una mina le quitamos la interrogación.
@@ -572,20 +619,20 @@ var PoopFinderGame = (function (w) {
                     }
 
                     // Marcamos la casilla.
-                    cell.setAttribute("value", that.board[xPos][yPos]);
-                    cell.className = "selected cell-" + that.board[xPos][yPos];
+                    cell.setAttribute("value", this.board[xPos][yPos]);
+                    cell.className = "selected cell-" + this.board[xPos][yPos];
                     cell.setAttribute("selected", "1");
 
                     // Restamos la celda seleccionada.
-                    that.cellsToWin--;
+                    this.cellsToWin--;
 
-                    if (that.board[xPos][yPos] === 0) {
+                    if (this.board[xPos][yPos] === 0) {
                         // En caso de que no haya ninguna mina alrededor de esta casilla marcaremos todas las casillas de alrededor.
                         for (var x = xPos - 1; x <= xPos + 1; x++) {
                             for (var y = yPos - 1; y <= yPos + 1; y++) {
-                                if (that.board[x] !== undefined) {
-                                    if (that.board[x][y] !== undefined) {
-                                        that.markCell(x, y, true);
+                                if (this.board[x] !== undefined) {
+                                    if (this.board[x][y] !== undefined) {
+                                        this.markCell(x, y, true);
                                     }
                                 }
                             }
@@ -595,9 +642,9 @@ var PoopFinderGame = (function (w) {
                         // Comprobamos si alrededor hay alguna casilla la cual no tenga minas alrededor para poder marcarla automáticamente.
                         for (var x = xPos - 1; x <= xPos + 1; x++) {
                             for (var y = yPos - 1; y <= yPos + 1; y++) {
-                                if (that.board[x] !== undefined) {
-                                    if (that.board[x][y] === 0) {
-                                        that.markCell(x, y, true);
+                                if (this.board[x] !== undefined) {
+                                    if (this.board[x][y] === 0) {
+                                        this.markCell(x, y, true);
                                     }
                                 }
                             }
@@ -612,16 +659,37 @@ var PoopFinderGame = (function (w) {
          * @description Muestra todas las "minas" del tablero de juego.
          */
         Board.prototype.showPoops = function () {
-            var that = this;
-
-            for (var x = 0; x < that.x; x++) {
-                for (var y = 0; y < that.y; y++) {
-                    if (that.board[x][y] === _constants.cells.poop) {
-                        var cell = that.game.interface.board[_constants.cells.genetaId(x, y)];
+            for (var x = 0; x < this.x; x++) {
+                for (var y = 0; y < this.y; y++) {
+                    if (this.board[x][y] === _constants.cells.poop) {
+                        var cell = this.game.interface.board[_constants.cells.genetaId(x, y)];
                         cell.className = "explosion mine";
                     }
                 }
             }
+        };
+
+        /**
+         * @name showFlags
+         * @description Muestra todas las banderas del tablero de juego.
+         */
+        Board.prototype.showFlags = function () {
+            // Recorremos el tablero de juego para mostrar las banderas y restar el total de "minas".
+            for (var x = 0; x < this.x; x++) {
+                for (var y = 0; y < this.y; y++) {
+                    if (this.board[x][y] === _constants.cells.poop) {
+                        var cell = this.game.interface.board[_constants.cells.genetaId(x, y)];
+
+                        if (cell.className.indexOf("flag") === -1) {
+                            cell.className = "flag";
+                            this.totalPoops--;
+                        }
+                    }
+                }
+            }
+
+            // Actualizamos el total de "minas" en el menú de juego.
+            this.game.interface.updateCountPoops(this.totalPoops);
         };
 
         /**
@@ -631,27 +699,30 @@ var PoopFinderGame = (function (w) {
          * @param {number} y - Posición vertical de la casilla.
          */
         Board.prototype.setFlag = function (x, y) {
-            var that = this;
+            if (!this.game.isGameOver) {
+                // Inicializamos el temporizador.
+                this.game.startTimer();
 
-            if (!that.game.isGameOver) {
-                // TODO: Inicializar temporizador.
-
-                var cell = that.game.interface.board[_constants.cells.genetaId(x, y)];
+                // Cogemos la celda y su valor.
+                var cell = this.game.interface.board[_constants.cells.genetaId(x, y)];
                 var value = w.parseInt(cell.getAttribute("value"));
 
-                if (isNaN(value)) {
-                    cell.setAttribute("value", _constants.cells.poop);
+                if (w.isNaN(value)) {
+                    // Si no hay valor entonces marcamos la casilla con una bandera.
+                    cell.setAttribute("value", _constants.cells.flag);
                     cell.className = "flag";
-                    that.totalPoops--;
-                    that.game.interface.updateCountMines();
+                    this.totalPoops--;
+                    this.game.interface.updateCountPoops(this.totalPoops);
                 }
-                else if (value === _constants.cells.poop) {
+                else if (value === _constants.cells.flag) {
+                    // Si hay una bandera en la casilla entonces la volvemos a marcar con un interrogante (quitando la bandera).
                     cell.setAttribute("value", _constants.cells.questionMark);
                     cell.className = "question-flag";
-                    that.totalPoops++;
-                    that.game.interface.updateCountMines();
+                    this.totalPoops++;
+                    this.game.interface.updateCountPoops(this.totalPoops);
                 }
                 else if (value === _constants.cells.questionMark) {
+                    // Si hay un interrogante en la casilla entonces la dejamos vacía.
                     cell.setAttribute("value", "");
                     cell.className = "";
                 }
@@ -682,17 +753,15 @@ var PoopFinderGame = (function (w) {
          * @param {number} y - Posición vertical de la casilla.
          */
         Board.prototype.endTouch = function (x, y) {
-            var that = this;
-
             // Cancelamos el timeout del evento touch.
-            w.clearTimeout(that.touch.timeout);
-            that.touch.timeout = 0;
+            w.clearTimeout(this.touch.timeout);
+            this.touch.timeout = 0;
 
-            if (that.touch.type === 0) {
-                that.checkOff(x, y);
+            if (this.touch.type === 0) {
+                this.checkOff(x, y);
             }
-            else if (that.touch.type === 1) {
-                that.setFlag(x, y);
+            else if (this.touch.type === 1) {
+                this.setFlag(x, y);
             }
         };
 
@@ -702,13 +771,11 @@ var PoopFinderGame = (function (w) {
          *              significa que lo que quiere es hacer scroll en la tabla, por tanto, cancelamos el evento touch.
          */
         Board.prototype.cancelTouch = function () {
-            var that = this;
-
             // Cancelamos el timeout del evento touch.
-            clearTimeout(that.touch.timeout);
-            that.touch.timeout = 0;
+            clearTimeout(this.touch.timeout);
+            this.touch.timeout = 0;
 
-            that.touch.type = -1;
+            this.touch.type = -1;
         };
 
         return Board;
@@ -724,7 +791,10 @@ var PoopFinderGame = (function (w) {
             this.interface = new InterfaceCtrl(containerId, this);
             this.board = undefined;
             this.isGameOver = false;
+            this.isGamePaused = false;
             this.difficulty = "";
+            this.timer = 0;
+            this.timerInterval = 0;
         };
 
         /**
@@ -735,6 +805,9 @@ var PoopFinderGame = (function (w) {
         PoopFinder.prototype.newGame = function (difficulty) {
             this.difficulty = difficulty;
             this.isGameOver = false;
+            this.isGamePaused = false;
+            this.timer = 0;
+            this.interface.updateTimer(this.timer);
 
             switch (difficulty) {
                 case _constants.difficulty.easy:
@@ -750,8 +823,6 @@ var PoopFinderGame = (function (w) {
                     this.difficulty = "";
                     throw new Error("PoopFinder: La dificultad '" + difficulty + "' no es válida.");
             }
-
-            // TODO: Después de crear el tablero hay que ocultar el menú principal, mostrar el tablero y mostrar el menú de juego.
         };
 
         /**
@@ -760,17 +831,51 @@ var PoopFinderGame = (function (w) {
          * @param {boolean} hasWon - Indica si el usuario ha ganado o no.
          */
         PoopFinder.prototype.gameOver = function (hasWon) {
-            var that = this;
-            that.isGameOver = true;
-            console.log("PoopFinder: Fin de la partida. ", hasWon);
-
-            // TODO: Parar el temporizador.
+            this.isGameOver = true;
+            this.stopTimer();
 
             if (!hasWon) {
-                that.board.showPoops();
+                this.interface.setDefeatFace();
+                this.board.showPoops();
             }
             else {
-                // TODO: Mostrar todas las banderas.
+                this.interface.setVictoryFace();
+                this.board.showFlags();
+            }
+        };
+
+        /**
+         * @name startTimer
+         * @description Inicializa el temporizador.
+         */
+        PoopFinder.prototype.startTimer = function () {
+            var that = this;
+
+            if (that.timerInterval === 0) {
+                that.timer = 0;
+
+                that.timerInterval = w.setInterval(function () {
+                    if (!that.isGamePaused) {
+                        // Incrementamos el temporizador y lo redondeamos a un decimal.
+                        that.timer = w.Math.round( (that.timer + _constants.timer.increase) * 10 ) / 10;
+
+                        // Si el temporizador no tiene decimales lo actualizamos en el menú de juego.
+                        if (that.timer % 1 === 0) {
+                            that.interface.updateTimer(that.timer);
+                        }
+                    }
+                }, _constants.timer.interval);
+            }
+        };
+
+        /**
+         * @name stopTimer
+         * @description Para el temporizador.
+         */
+        PoopFinder.prototype.stopTimer = function () {
+            if (this.timerInterval !== 0) {
+                w.clearInterval(this.timerInterval);
+                this.timerInterval = 0;
             }
         };
 
