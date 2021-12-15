@@ -1,3 +1,9 @@
+/*!
+ * PoopFinder v1.0
+ *
+ * Autor: Kevin Gómez Codina
+ * Date: 2021-12-15T12:37Z
+ */
 // @ts-check
 "use strict";
 
